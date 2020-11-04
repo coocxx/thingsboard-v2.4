@@ -69,10 +69,13 @@ public class RpcManagerActor extends ContextAwareActor {
         } else if (msg instanceof RpcSessionCreateRequestMsg) {
             onCreateSessionRequest((RpcSessionCreateRequestMsg) msg);
         } else if (msg instanceof RpcSessionConnectedMsg) {
+            //连接 加入
             onSessionConnected((RpcSessionConnectedMsg) msg);
         } else if (msg instanceof RpcSessionDisconnectedMsg) {
+            //关闭连接 移出sessionActors、pendingMsgs
             onSessionDisconnected((RpcSessionDisconnectedMsg) msg);
         } else if (msg instanceof RpcSessionClosedMsg) {
+            //
             onSessionClosed((RpcSessionClosedMsg) msg);
         } else if (msg instanceof ClusterEventMsg) {
             onClusterEvent((ClusterEventMsg) msg);
@@ -101,6 +104,7 @@ public class RpcManagerActor extends ContextAwareActor {
             SessionActorInfo session = sessionActors.get(address);
             if (session != null) {
                 log.debug("{} Forwarding msg to session actor: {}", address, msg);
+                //发送消息到远程，消息类型ClusterAPIProtos.ClusterMessage
                 session.getActor().tell(msg, ActorRef.noSender());
             } else {
                 log.debug("{} Storing msg to pending queue: {}", address, msg);
@@ -136,6 +140,7 @@ public class RpcManagerActor extends ContextAwareActor {
     }
 
     private void onSessionConnected(RpcSessionConnectedMsg msg) {
+        //
         register(msg.getRemoteAddress(), msg.getId(), context().sender());
     }
 
@@ -183,10 +188,13 @@ public class RpcManagerActor extends ContextAwareActor {
     }
 
     private void register(ServerAddress remoteAddress, UUID uuid, ActorRef sender) {
+        //将远程地址添加到sessionActors
         sessionActors.put(remoteAddress, new SessionActorInfo(uuid, sender));
         log.info("[{}][{}] Registering session actor.", remoteAddress, uuid);
+        //将该地址对应对象移出pendingMsgs队列
         Queue<ClusterAPIProtos.ClusterMessage> data = pendingMsgs.remove(remoteAddress);
         if (data != null) {
+            //队列里面存在该远程地址，则向发这条消息来得那些actor发一条消息，消息类型RpcSessionTellMsg
             log.info("[{}][{}] Forwarding {} pending messages.", remoteAddress, uuid, data.size());
             data.forEach(msg -> sender.tell(new RpcSessionTellMsg(msg), ActorRef.noSender()));
         } else {
@@ -221,6 +229,16 @@ public class RpcManagerActor extends ContextAwareActor {
         return strategy;
     }
 
+    /**
+     * 在akka中，每个actor都是其子actor的supervisor。当一个子actor失败时，supervisor有两种策略：
+     *
+     * OneForOneStrategy 只针对异常的那个子actor操作
+     * OneForAllStrategy 对所有子actor操作
+     * rest_for_one：针对一个子进程列表，一个子进程停止，停止列表中该子进程及后面的子进程，并依次重启这些子进程
+     * simple_one_for_one：其重启策略同one_for_one,但是必须是同类型的子进程，必须动态加入。
+     *
+     * 可选的行为有Resume恢复 Restart重新启动 Stop停止 Escalate升级
+     */
     private final SupervisorStrategy strategy = new OneForOneStrategy(3, Duration.create("1 minute"), t -> {
         log.warn("Unknown failure", t);
         return SupervisorStrategy.resume();

@@ -115,6 +115,7 @@ public class DefaultActorService implements ActorService {
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationEvent(ApplicationReadyEvent applicationReadyEvent) {
         log.info("Received application ready event. Sending application init message to actor system");
+        //监听，接收到消息，就向appActor发送一条消息，消息类型AppInitMsg APP_INIT_MSG
         appActor.tell(new AppInitMsg(), ActorRef.noSender());
     }
 
