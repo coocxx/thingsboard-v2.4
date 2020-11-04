@@ -19,9 +19,6 @@ import akka.actor.ActorRef;
 import akka.actor.OneForOneStrategy;
 import akka.actor.Props;
 import akka.actor.SupervisorStrategy;
-import akka.event.Logging;
-import akka.event.LoggingAdapter;
-import lombok.extern.slf4j.Slf4j;
 import org.thingsboard.server.actors.ActorSystemContext;
 import org.thingsboard.server.actors.service.ContextAwareActor;
 import org.thingsboard.server.actors.service.ContextBasedCreator;
@@ -107,6 +104,7 @@ public class RpcManagerActor extends ContextAwareActor {
                 session.getActor().tell(msg, ActorRef.noSender());
             } else {
                 log.debug("{} Storing msg to pending queue: {}", address, msg);
+                //Map<ServerAddress, Queue<ClusterAPIProtos.ClusterMessage>> pendingMsgs
                 Queue<ClusterAPIProtos.ClusterMessage> queue = pendingMsgs.get(address);
                 if (queue == null) {
                     queue = new LinkedList<>();

@@ -31,9 +31,6 @@ import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.id.UUIDBased;
 import org.thingsboard.server.common.data.page.PageDataIterable;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * Created by ashvayka on 15.03.18.
  */
@@ -52,6 +49,7 @@ public abstract class EntityActorsManager<T extends EntityId, A extends UntypedA
 
     protected abstract String getDispatcherName();
 
+    //抽象方法，由继承该类的子类实现
     protected abstract Creator<A> creator(T entityId);
 
     protected abstract PageDataIterable.FetchFunction<M> getFetchEntitiesFunction();
@@ -61,7 +59,9 @@ public abstract class EntityActorsManager<T extends EntityId, A extends UntypedA
             T entityId = (T) entity.getId();
             log.debug("[{}|{}] Creating entity actor", entityId.getEntityType(), entityId.getId());
             //TODO: remove this cast making UUIDBased subclass of EntityId an interface and vice versa.
+            //创建一个RuleChainActor
             ActorRef actorRef = getOrCreateActor(context, entityId);
+            //RuleChainManager实现该抽象类EntityActorsManager的visit(),给RuleChainManager类的两个属性赋值
             visit(entity, actorRef);
             log.debug("[{}|{}] Entity actor created.", entityId.getEntityType(), entityId.getId());
         }
@@ -70,7 +70,15 @@ public abstract class EntityActorsManager<T extends EntityId, A extends UntypedA
     public void visit(M entity, ActorRef actorRef) {
     }
 
+    /**
+     * 根据context以及entityId创建一个ruleChainActor
+     * @param context
+     * @param entityId
+     * @return
+     */
     public ActorRef getOrCreateActor(ActorContext context, T entityId) {
+        //BiMap<T, ActorRef> actors
+        //creator(eId)：创建一个Creator<RuleChainActor>
         return actors.computeIfAbsent(entityId, eId ->
                 context.actorOf(Props.create(creator(eId))
                         .withDispatcher(getDispatcherName()), eId.toString()));

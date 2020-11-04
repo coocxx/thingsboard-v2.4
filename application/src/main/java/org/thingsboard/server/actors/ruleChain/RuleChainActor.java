@@ -15,7 +15,6 @@
  */
 package org.thingsboard.server.actors.ruleChain;
 
-import akka.actor.ActorInitializationException;
 import akka.actor.OneForOneStrategy;
 import akka.actor.SupervisorStrategy;
 import org.thingsboard.server.actors.ActorSystemContext;
@@ -73,12 +72,22 @@ public class RuleChainActor extends ComponentActor<RuleChainId, RuleChainActorMe
         private final TenantId tenantId;
         private final RuleChainId ruleChainId;
 
+        /**
+         * 构造方法
+         * @param context
+         * @param tenantId
+         * @param pluginId
+         */
         public ActorCreator(ActorSystemContext context, TenantId tenantId, RuleChainId pluginId) {
             super(context);
             this.tenantId = tenantId;
             this.ruleChainId = pluginId;
         }
 
+        /**
+         * 创建一个RuleChainActor实例并返回
+         * @return RuleChainActor
+         */
         @Override
         public RuleChainActor create() {
             return new RuleChainActor(context, tenantId, ruleChainId);
@@ -95,6 +104,16 @@ public class RuleChainActor extends ComponentActor<RuleChainId, RuleChainActorMe
         return strategy;
     }
 
+    /**
+     * 在akka中，每个actor都是其子actor的supervisor。当一个子actor失败时，supervisor有两种策略：
+     *
+     * OneForOneStrategy 只针对异常的那个子actor操作
+     * OneForAllStrategy 对所有子actor操作
+     * rest_for_one：针对一个子进程列表，一个子进程停止，停止列表中该子进程及后面的子进程，并依次重启这些子进程
+     * simple_one_for_one：其重启策略同one_for_one,但是必须是同类型的子进程，必须动态加入。
+     *
+     * 可选的行为有Resume恢复 Restart重新启动 Stop停止 Escalate升级。
+     */
     private final SupervisorStrategy strategy = new OneForOneStrategy(3, Duration.create("1 minute"), t -> {
         logAndPersist("Unknown Failure", ActorSystemContext.toException(t));
         return SupervisorStrategy.resume();

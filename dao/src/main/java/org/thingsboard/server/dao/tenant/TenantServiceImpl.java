@@ -115,11 +115,21 @@ public class TenantServiceImpl extends AbstractEntityService implements TenantSe
         deleteEntityRelations(tenantId, tenantId);
     }
 
+    /**
+     * 根据Region查找tenant然后返回tenant列表tenants,然后通过列表tenants以及pageLink参数创建实例TextPageData，返回TextPageData<Tenant>
+     *
+     * @param pageLink
+     * @return
+     */
     @Override
     public TextPageData<Tenant> findTenants(TextPageLink pageLink) {
         log.trace("Executing findTenants pageLink [{}]", pageLink);
         Validator.validatePageLink(pageLink, "Incorrect page link " + pageLink);
+        //TenantId Global TextPageLink
+        //根据Region查找tenant然后返回tenant列表tenants
         List<Tenant> tenants = tenantDao.findTenantsByRegion(new TenantId(EntityId.NULL_UUID), DEFAULT_TENANT_REGION, pageLink);
+        //通过列表tenants以及pageLink参数创建实例TextPageData并返回
+        //TextPageData类属性List<T> data; TextPageLink nextPageLink; boolean hasNext
         return new TextPageData<>(tenants, pageLink);
     }
 

@@ -42,6 +42,9 @@ import scala.concurrent.duration.Duration;
 
 import java.util.Optional;
 
+/**
+ *
+ */
 public class AppActor extends RuleChainManagerActor {
 
     private static final TenantId SYSTEM_TENANT = new TenantId(ModelConstants.NULL_UUID);
@@ -57,29 +60,39 @@ public class AppActor extends RuleChainManagerActor {
 
     @Override
     public SupervisorStrategy supervisorStrategy() {
+        //策略
         return strategy;
     }
 
+
     @Override
     public void preStart() {
+        //AppActor启动后接收到第一条消息之前执行
     }
 
     @Override
     protected boolean process(TbActorMsg msg) {
         if (!ruleChainsInitialized) {
+            //初始化RuleChainManager
+            //创建一个RuleChainActor及给租户列表创建一个TenantActor
             initRuleChainsAndTenantActors();
             ruleChainsInitialized = true;
             if (msg.getMsgType() != MsgType.APP_INIT_MSG) {
+                //未初始化
                 log.warn("Rule Chains initialized by unexpected message: {}", msg);
             }
         }
+        //根据消息类型的不同而进行不同的操作
         switch (msg.getMsgType()) {
             case APP_INIT_MSG:
                 break;
             case SEND_TO_CLUSTER_MSG:
+                //address有效存在：将消息发送给rpcManagerActor,消息类型为ClusterAPIProtos.ClusterMessage CLUSTER_ACTOR_MESSAGE
+                //address不存在：将消息发送给当前appActor,消息类型为MsgType.SEND_TO_CLUSTER_MSG
                 onPossibleClusterMsg((SendToClusterMsg) msg);
                 break;
             case CLUSTER_EVENT_MSG:
+                //向已经存在的每一个RuleChainActor及每一个TenantActor发送一条消息，消息类型TbActorMsg
                 broadcast(msg);
                 break;
             case COMPONENT_LIFE_CYCLE_MSG:
@@ -103,15 +116,24 @@ public class AppActor extends RuleChainManagerActor {
         return true;
     }
 
+    /**
+     * 初始化RuleChainManager
+     * 创建一个RuleChainActor及给每一个租户创建一个TenantActor
+     */
     private void initRuleChainsAndTenantActors() {
         log.info("Starting main system actor.");
         try {
-            //创建一个ruleChainActor
+            //初始化RuleChainManager
+            //1.创建一个RuleChainActor
+            //2.visit(),给RuleChainManager类的两个属性赋值
             initRuleChains();
             if (systemContext.isTenantComponentsInitEnabled()) {
+                //创建一个PageDataIterable类的实例,用于遍历
+                //tenantService::findTenants 根据Region查找tenant然后返回tenant列表tenants,然后通过列表tenants以及pageLink参数创建实例TextPageData，返回TextPageData<Tenant>
                 PageDataIterable<Tenant> tenantIterator = new PageDataIterable<>(tenantService::findTenants, ENTITY_PACK_LIMIT);
                 for (Tenant tenant : tenantIterator) {
                     log.debug("[{}] Creating tenant actor", tenant.getId());
+                    //创建一个TenantActor实例
                     getOrCreateTenantActor(tenant.getId());
                     log.debug("Tenant actor created.");
                 }
@@ -123,11 +145,14 @@ public class AppActor extends RuleChainManagerActor {
     }
 
     private void onPossibleClusterMsg(SendToClusterMsg msg) {
+        //routingService.resolveById(msg.getEntityId())  Optional<ServerAddress>
         Optional<ServerAddress> address = systemContext.getRoutingService().resolveById(msg.getEntityId());
         if (address.isPresent()) {
+            //将消息发送给rpcManagerActor,消息类型为ClusterAPIProtos.ClusterMessage CLUSTER_ACTOR_MESSAGE
             systemContext.getRpcService().tell(
                     systemContext.getEncodingService().convertToProtoDataMessage(address.get(), msg.getMsg()));
         } else {
+            //将消息发送给当前appActor,消息类型为MsgType.SEND_TO_CLUSTER_MSG
             self().tell(msg.getMsg(), ActorRef.noSender());
         }
     }
@@ -143,7 +168,9 @@ public class AppActor extends RuleChainManagerActor {
 
     @Override
     protected void broadcast(Object msg) {
+        //向已经存在的每一个RuleChainActor发送一条消息，消息类型TbActorMsg
         super.broadcast(msg);
+        //向已经存在的每一个TenantActor发送一条消息，消息类型TbActorMsg
         tenantActors.values().forEach(actorRef -> actorRef.tell(msg, ActorRef.noSender()));
     }
 
@@ -175,6 +202,11 @@ public class AppActor extends RuleChainManagerActor {
         getOrCreateTenantActor(msg.getTenantId()).tell(msg, ActorRef.noSender());
     }
 
+    /**
+     * 创建一个TenantActor实例
+     * @param tenantId
+     * @return
+     */
     private ActorRef getOrCreateTenantActor(TenantId tenantId) {
         return tenantActors.computeIfAbsent(tenantId, k -> {
             log.debug("[{}] Creating tenant actor.", tenantId);
@@ -212,6 +244,16 @@ public class AppActor extends RuleChainManagerActor {
         }
     }
 
+    /**
+     * 在akka中，每个actor都是其子actor的supervisor。当一个子actor失败时，supervisor有两种策略：
+     *
+     * OneForOneStrategy 只针对异常的那个子actor操作
+     * OneForAllStrategy 对所有子actor操作
+     * rest_for_one：针对一个子进程列表，一个子进程停止，停止列表中该子进程及后面的子进程，并依次重启这些子进程
+     * simple_one_for_one：其重启策略同one_for_one,但是必须是同类型的子进程，必须动态加入。
+     *
+     * 可选的行为有Resume恢复 Restart重新启动 Stop停止 Escalate升级
+     */
     private final SupervisorStrategy strategy = new OneForOneStrategy(3, Duration.create("1 minute"), t -> {
         log.warn("Unknown failure", t);
         if (t instanceof RuntimeException) {

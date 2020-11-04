@@ -295,6 +295,7 @@ public class ActorSystemContext {
     @Getter
     private final AtomicInteger jsInvokeFailuresCount = new AtomicInteger(0);
 
+    //spring注解@Scheduled表明配置定时任务的线程池
     @Scheduled(fixedDelayString = "${js.remote.stats.print_interval_ms}")
     public void printStats() {
         if (statisticsEnabled) {
@@ -360,10 +361,17 @@ public class ActorSystemContext {
     @Getter
     private RedisTemplate<String, Object> redisTemplate;
 
+    /**
+     * akka也提供可以在代码中以配置文件的方式进行配置
+     */
     public ActorSystemContext() {
         config = ConfigFactory.parseResources(AKKA_CONF_FILE_NAME).withFallback(ConfigFactory.load());
     }
 
+    /**
+     * 获取定时任务actorSystem的实现类ActorSystemImpl的scheduler属性
+     * @return
+     */
     public Scheduler getScheduler() {
         return actorSystem.scheduler();
     }

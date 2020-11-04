@@ -26,7 +26,6 @@ import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.msg.cluster.ServerAddress;
 import org.thingsboard.server.common.msg.cluster.ServerType;
 import org.thingsboard.server.service.cluster.discovery.DiscoveryService;
-import org.thingsboard.server.service.cluster.discovery.DiscoveryServiceListener;
 import org.thingsboard.server.service.cluster.discovery.ServerInstance;
 import org.thingsboard.server.utils.MiscUtils;
 
@@ -35,7 +34,6 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * Cluster service implementation based on consistent hash ring
@@ -80,6 +78,7 @@ public class ConsistentClusterRoutingService implements ClusterRoutingService {
 
     @Override
     public ServerAddress getCurrentServer() {
+        //ServerInstance.getServerAddress()   serverAddress
         return discoveryService.getCurrentServer().getServerAddress();
     }
 
@@ -93,6 +92,8 @@ public class ConsistentClusterRoutingService implements ClusterRoutingService {
         if (circle.isEmpty()) {
             return Optional.empty();
         }
+        //uuid.getMostSignificantBits():获取uuid的属性mostSigBits,long类型
+        //hashFunction  接口HashFunction的一个实例 Murmur3_32HashFunction Murmur3_128HashFunction ChecksumHashFunction MessageDigestHashFunction
         Long hash = hashFunction.newHasher().putLong(uuid.getMostSignificantBits())
                 .putLong(uuid.getLeastSignificantBits()).hash().asLong();
         if (!circle.containsKey(hash)) {

@@ -41,6 +41,7 @@ public class CurrentServerInstanceService implements ServerInstanceService {
     private ServerInstance self;
 
     @PostConstruct
+    //@PostConstruct修饰的方法会在服务器加载Servlet的时候运行，并且只会被服务器执行一次
     public void init() {
         Assert.hasLength(rpcHost, missingProperty("rpc.bind_host"));
         Assert.notNull(rpcPort, missingProperty("rpc.bind_port"));

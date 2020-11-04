@@ -43,8 +43,14 @@ public abstract class RuleChainManager extends EntityActorsManager<RuleChainId, 
         this.service = systemContext.getRuleChainService();
     }
 
+    /**
+     * 创建一个Creator<RuleChainActor>
+     * @param entityId
+     * @return
+     */
     @Override
     public Creator<RuleChainActor> creator(RuleChainId entityId) {
+        //创建一个ActorCreator实例 ActorCreator是RuleChainActor的内嵌类
         return new RuleChainActor.ActorCreator(systemContext, getTenantId(), entityId);
     }
 

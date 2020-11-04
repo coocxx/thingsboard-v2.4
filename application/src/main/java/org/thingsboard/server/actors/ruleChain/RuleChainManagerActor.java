@@ -38,6 +38,9 @@ public abstract class RuleChainManagerActor extends ContextAwareActor {
     }
 
     protected void initRuleChains() {
+        //初始化RuleChainManager
+        //1.创建一个RuleChainActor
+        //2.visit(),给RuleChainManager类的两个属性赋值
         ruleChainManager.init(this.context());
     }
 
