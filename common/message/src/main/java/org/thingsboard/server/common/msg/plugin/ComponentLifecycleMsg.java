@@ -39,6 +39,7 @@ public class ComponentLifecycleMsg implements TbActorMsg, TenantAwareMsg, ToAllN
     @Getter
     private final EntityId entityId;
     @Getter
+    //生命周期CREATED, STARTED, ACTIVATED, SUSPENDED, UPDATED, STOPPED, DELETED
     private final ComponentLifecycleEvent event;
 
     public ComponentLifecycleMsg(TenantId tenantId, EntityId entityId, ComponentLifecycleEvent event) {

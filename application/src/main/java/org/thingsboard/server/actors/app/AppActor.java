@@ -1,12 +1,12 @@
 /**
  * Copyright © 2016-2020 The Thingsboard Authors
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -87,6 +87,7 @@ public class AppActor extends RuleChainManagerActor {
             case APP_INIT_MSG:
                 break;
             case SEND_TO_CLUSTER_MSG:
+                //发送消息到远程
                 //address有效存在：将消息发送给rpcManagerActor,消息类型为ClusterAPIProtos.ClusterMessage CLUSTER_ACTOR_MESSAGE
                 //address不存在：将消息发送给当前appActor,消息类型为MsgType.SEND_TO_CLUSTER_MSG
                 onPossibleClusterMsg((SendToClusterMsg) msg);
@@ -96,9 +97,12 @@ public class AppActor extends RuleChainManagerActor {
                 broadcast(msg);
                 break;
             case COMPONENT_LIFE_CYCLE_MSG:
+                //根据生命周期CREATED, STARTED, ACTIVATED, SUSPENDED, UPDATED, STOPPED, DELETED，租户、实体类型等操作
+                //给RuleChainActor或者TenantActor发送一条消息
                 onComponentLifecycleMsg((ComponentLifecycleMsg) msg);
                 break;
             case SERVICE_TO_RULE_ENGINE_MSG:
+                //给TenantActor发送一条消息 ，消息类型ServiceToRuleEngineMsg
                 onServiceToRuleEngineMsg((ServiceToRuleEngineMsg) msg);
                 break;
             case TRANSPORT_TO_DEVICE_ACTOR_MSG:
@@ -108,6 +112,7 @@ public class AppActor extends RuleChainManagerActor {
             case DEVICE_RPC_REQUEST_TO_DEVICE_ACTOR_MSG:
             case SERVER_RPC_RESPONSE_TO_DEVICE_ACTOR_MSG:
             case REMOTE_TO_RULE_CHAIN_TELL_NEXT_MSG:
+                //给TenantActor发送一条消息 ，消息类型TenantAwareMsg
                 onToDeviceActorMsg((TenantAwareMsg) msg);
                 break;
             default:
@@ -159,9 +164,12 @@ public class AppActor extends RuleChainManagerActor {
 
     private void onServiceToRuleEngineMsg(ServiceToRuleEngineMsg msg) {
         if (SYSTEM_TENANT.equals(msg.getTenantId())) {
-//            this may be a notification about system entities created.
-//            log.warn("[{}] Invalid service to rule engine msg called. System messages are not supported yet: {}", SYSTEM_TENANT, msg);
+            //这可能是有关已创建系统实体的通知。
+            // this may be a notification about system entities created.
+            //调用的规则引擎消息服务无效。尚不支持系统消息：
+            //log.warn("[{}] Invalid service to rule engine msg called. System messages are not supported yet: {}", SYSTEM_TENANT, msg);
         } else {
+            //给新创建的TenantActor发送一条消息 ，消息类型ServiceToRuleEngineMsg
             getOrCreateTenantActor(msg.getTenantId()).tell(msg, self());
         }
     }
@@ -177,21 +185,28 @@ public class AppActor extends RuleChainManagerActor {
     private void onComponentLifecycleMsg(ComponentLifecycleMsg msg) {
         ActorRef target = null;
         if (SYSTEM_TENANT.equals(msg.getTenantId())) {
+            //这可能是有关已创建系统实体的通知。
+            //调用的规则引擎消息服务无效。尚不支持系统消息：
+            //根据entityType类型创建actor 如这里是创建一个RuleChainActor
             target = getEntityActorRef(msg.getEntityId());
         } else {
             if (msg.getEntityId().getEntityType() == EntityType.TENANT
                     && msg.getEvent() == ComponentLifecycleEvent.DELETED) {
+                //生命周期为DELETED
                 log.debug("[{}] Handling tenant deleted notification: {}", msg.getTenantId(), msg);
                 ActorRef tenantActor = tenantActors.remove(new TenantId(msg.getEntityId().getId()));
                 if (tenantActor != null) {
                     log.debug("[{}] Deleting tenant actor: {}", msg.getTenantId(), tenantActor);
+                    //删除指定存在的那个TenantActor
                     context().stop(tenantActor);
                 }
             } else {
+                //创建一个TenantActor实例
                 target = getOrCreateTenantActor(msg.getTenantId());
             }
         }
         if (target != null) {
+            //将消息发送到刚创建的Actor实例,消息类型ComponentLifecycleMsg
             target.tell(msg, ActorRef.noSender());
         } else {
             log.debug("[{}] Invalid component lifecycle msg: {}", msg.getTenantId(), msg);
@@ -199,6 +214,7 @@ public class AppActor extends RuleChainManagerActor {
     }
 
     private void onToDeviceActorMsg(TenantAwareMsg msg) {
+        //给TenantActor发送一条消息 消息类型TenantAwareMsg
         getOrCreateTenantActor(msg.getTenantId()).tell(msg, ActorRef.noSender());
     }
 
@@ -212,6 +228,7 @@ public class AppActor extends RuleChainManagerActor {
             log.debug("[{}] Creating tenant actor.", tenantId);
             ActorRef tenantActor = context().actorOf(Props.create(new TenantActor.ActorCreator(systemContext, tenantId))
                     .withDispatcher(DefaultActorService.CORE_DISPATCHER_NAME), tenantId.toString());
+            //监控tenantActor
             context().watch(tenantActor);
             log.debug("[{}] Created tenant actor: {}.", tenantId, tenantActor);
             return tenantActor;
