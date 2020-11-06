@@ -116,7 +116,8 @@ class DefaultTbContext implements TbContext {
     @Override
     public void tellSelf(TbMsg msg, long delayMs) {
         //TODO: add persistence layer
-        scheduleMsgWithDelay(new RuleNodeToSelfMsg(msg), delayMs, nodeCtx.getSelfActor());
+        scheduleMsgWithDeflay(new RuleNodeToSelfMsg(msg), delayMs, nodeCtx.getSelfActor());
+        //scheduleMsgWithDelay(new RuleNodeToSelfMsg(msg), delayMs, nodeCtx.getSelfActor());
     }
 
     @Override

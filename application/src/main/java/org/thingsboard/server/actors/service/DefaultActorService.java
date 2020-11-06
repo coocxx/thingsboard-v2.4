@@ -1,12 +1,12 @@
 /**
  * Copyright © 2016-2020 The Thingsboard Authors
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -92,6 +92,12 @@ public class DefaultActorService implements ActorService {
 
     private ActorRef rpcManagerActor;
 
+    /**
+     * 创建DefaultTbActorSystem
+     * 设置appActor
+     * 设置rpcManagerActor
+     * 设置statsActor
+     */
     @PostConstruct
     public void initActorSystem() {
         log.info("Initializing Actor system.");
@@ -112,10 +118,13 @@ public class DefaultActorService implements ActorService {
         log.info("Actor system initialized.");
     }
 
+    /**
+     * appActor发布AppInitMsg消息
+     * @param applicationReadyEvent
+     */
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationEvent(ApplicationReadyEvent applicationReadyEvent) {
         log.info("Received application ready event. Sending application init message to actor system");
-        //监听，接收到消息，就向appActor发送一条消息，消息类型AppInitMsg APP_INIT_MSG
         appActor.tell(new AppInitMsg(), ActorRef.noSender());
     }
 

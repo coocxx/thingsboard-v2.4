@@ -102,7 +102,7 @@ public class AppActor extends RuleChainManagerActor {
                 onComponentLifecycleMsg((ComponentLifecycleMsg) msg);
                 break;
             case SERVICE_TO_RULE_ENGINE_MSG:
-                //给TenantActor发送一条消息 ，消息类型ServiceToRuleEngineMsg
+                //给某个TenantActor发送一条消息 ，消息类型ServiceToRuleEngineMsg
                 onServiceToRuleEngineMsg((ServiceToRuleEngineMsg) msg);
                 break;
             case TRANSPORT_TO_DEVICE_ACTOR_MSG:
@@ -122,7 +122,7 @@ public class AppActor extends RuleChainManagerActor {
     }
 
     /**
-     * 初始化RuleChainManager
+     * 初始化
      * 创建一个RuleChainActor及给每一个租户创建一个TenantActor
      */
     private void initRuleChainsAndTenantActors() {
@@ -133,6 +133,7 @@ public class AppActor extends RuleChainManagerActor {
             //2.visit(),给RuleChainManager类的两个属性赋值
             initRuleChains();
             if (systemContext.isTenantComponentsInitEnabled()) {
+                //为每一个租户创建一个TenantActor
                 //创建一个PageDataIterable类的实例,用于遍历
                 //tenantService::findTenants 根据Region查找tenant然后返回tenant列表tenants,然后通过列表tenants以及pageLink参数创建实例TextPageData，返回TextPageData<Tenant>
                 PageDataIterable<Tenant> tenantIterator = new PageDataIterable<>(tenantService::findTenants, ENTITY_PACK_LIMIT);
@@ -214,7 +215,7 @@ public class AppActor extends RuleChainManagerActor {
     }
 
     private void onToDeviceActorMsg(TenantAwareMsg msg) {
-        //给TenantActor发送一条消息 消息类型TenantAwareMsg
+        //给某个TenantActor发送一条消息 消息类型TenantAwareMsg
         getOrCreateTenantActor(msg.getTenantId()).tell(msg, ActorRef.noSender());
     }
 
